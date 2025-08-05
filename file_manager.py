@@ -154,9 +154,9 @@ class DocumentChunker:
 class FileManager:
     """Enhanced file management system for handling dozens of files"""
 
-    def __init__(self, storage_dir: str = "documents", db_path: str = "file_index.db"):
+    def __init__(self, storage_dir: str = "/tmp/documents", db_path: str = "/tmp/file_index.db"):
         self.storage_dir = Path(storage_dir)
-        self.storage_dir.mkdir(exist_ok=True)
+        self.storage_dir.mkdir(exist_ok=True, parents=True)
         self.db_path = db_path
         self.processor = DocumentProcessor()
         self.chunker = DocumentChunker()

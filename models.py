@@ -2,6 +2,7 @@ import google.generativeai as genai
 import json
 import sqlite3
 import hashlib
+import os
 from datetime import datetime
 from file_manager import FileManager
 import logging
@@ -174,6 +175,7 @@ class UserManager:
 
     def __init__(self):
         try:
+            self.db_path = '/tmp/users.db' if os.path.exists('/tmp') else 'users.db'
             self.init_db()
             self.add_demo_users()
         except Exception as e:
@@ -182,7 +184,7 @@ class UserManager:
 
     def init_db(self):
         try:
-            conn = sqlite3.connect('users.db')
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute('''
                            CREATE TABLE IF NOT EXISTS users
@@ -217,7 +219,7 @@ class UserManager:
                            ''')
             conn.commit()
             conn.close()
-            print("✅ Database created successfully")
+            print(f"✅ Database created successfully at {self.db_path}")
         except Exception as e:
             print(f"❌ Database creation failed: {e}")
             raise e
@@ -234,7 +236,7 @@ class UserManager:
                 ('analitik', 'data123', 'Leyla Həsənova', 'analyst')
             ]
 
-            conn = sqlite3.connect('users.db')
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
             for username, password, name, role in demo_users:
@@ -254,7 +256,7 @@ class UserManager:
 
     def authenticate(self, username, password):
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute('''
                        SELECT id, username, name, role
@@ -276,7 +278,7 @@ class UserManager:
 
     def create_user(self, username, password, name, role):
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         try:
