@@ -45,7 +45,6 @@ def init_app():
             # Initialize UserManager first
             print("Initializing UserManager...")
             user_manager = UserManager()
-            user_manager.initialize_db()  # Force database creation
             print("✅ UserManager initialized")
             
             # Initialize FileManager
@@ -71,16 +70,23 @@ def init_app():
             import traceback
             traceback.print_exc()
             
-            # Try to initialize at least the basic user manager
+            # Try to initialize components one by one to isolate the issue
             try:
+                print("Attempting UserManager only...")
                 user_manager = UserManager()
-                user_manager.initialize_db()
-                print("✅ Basic UserManager fallback initialized")
-            except:
+                print("✅ UserManager OK")
+            except Exception as e1:
+                print(f"❌ UserManager failed: {e1}")
                 user_manager = None
-                print("❌ Even basic UserManager failed")
             
-            file_manager = None
+            try:
+                print("Attempting FileManager only...")
+                file_manager = FileManager()
+                print("✅ FileManager OK")
+            except Exception as e2:
+                print(f"❌ FileManager failed: {e2}")
+                file_manager = None
+            
             knowledge_base = None
             ai_assistant = None
     else:
@@ -163,6 +169,26 @@ def index():
     </body>
     </html>
     '''
+
+
+@app.route('/debug')
+def debug_info():
+    """Debug endpoint to see initialization status"""
+    import sys
+    return jsonify({
+        'python_version': sys.version,
+        'imports_success': IMPORTS_SUCCESS,
+        'components': {
+            'user_manager': user_manager is not None,
+            'file_manager': file_manager is not None,
+            'knowledge_base': knowledge_base is not None,
+            'ai_assistant': ai_assistant is not None
+        },
+        'config': {
+            'secret_key_set': bool(app.secret_key),
+            'gemini_key_set': bool(Config.GEMINI_API_KEY)
+        }
+    })
 
 
 @app.route('/health')

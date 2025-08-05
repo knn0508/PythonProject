@@ -213,6 +213,10 @@ class UserManager:
         conn.commit()
         conn.close()
 
+    def initialize_db(self):
+        """Alias for init_db for compatibility"""
+        return self.init_db()
+
     def add_demo_users(self):
         demo_users = [
             ('admin', 'admin123', 'Sistem Administratoru', 'admin'),
