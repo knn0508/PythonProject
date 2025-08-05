@@ -9,10 +9,6 @@ temp/
 .git/
 .idea/
 .venv/
-app.py
-config.py
-file_manager.py
-models.py
 test_*.py
 setup.py
 simple_test.py
@@ -21,3 +17,4 @@ file_index.db
 documents/
 simple_test_docs/
 *.docx
+simple_app.py

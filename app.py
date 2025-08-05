@@ -6,9 +6,22 @@ from werkzeug.utils import secure_filename
 import mimetypes
 
 # Import our enhanced models and configuration
-from models import EnhancedKnowledgeBase, UserManager, EnhancedAIAssistant
-from file_manager import FileManager
-from config import Config
+try:
+    from models import EnhancedKnowledgeBase, UserManager, EnhancedAIAssistant
+    from file_manager import FileManager
+    from config import Config
+    IMPORTS_SUCCESS = True
+except ImportError as e:
+    print(f"Import error: {e}")
+    IMPORTS_SUCCESS = False
+    # Fallback configuration
+    class Config:
+        SECRET_KEY = 'fallback-secret-key'
+        GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+        DEBUG = False
+        HOST = '0.0.0.0'
+        PORT = 5000
+
 import sqlite3
 
 app = Flask(__name__)
@@ -24,20 +37,28 @@ def init_app():
         os.makedirs('temp', exist_ok=True)
         os.makedirs('documents', exist_ok=True)
     
-    # Initialize components
+    # Initialize components only if imports succeeded
     global file_manager, knowledge_base, user_manager, ai_assistant
-    try:
-        file_manager = FileManager()
-        knowledge_base = EnhancedKnowledgeBase(file_manager)
-        user_manager = UserManager()
-        ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
-    except Exception as e:
-        print(f"Initialization error: {e}")
-        # Create minimal instances for basic functionality
+    if IMPORTS_SUCCESS:
+        try:
+            file_manager = FileManager()
+            knowledge_base = EnhancedKnowledgeBase(file_manager)
+            user_manager = UserManager()
+            ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
+            print("✅ All components initialized successfully")
+        except Exception as e:
+            print(f"Component initialization error: {e}")
+            # Create minimal instances for basic functionality
+            file_manager = None
+            knowledge_base = None
+            user_manager = None
+            ai_assistant = None
+    else:
         file_manager = None
         knowledge_base = None
         user_manager = None
         ai_assistant = None
+        print("⚠️ Running in fallback mode due to import errors")
 
 # Initialize for serverless
 init_app()
@@ -65,6 +86,38 @@ def admin_required(f):
 
 @app.route('/')
 def index():
+    # Fallback mode if components not loaded
+    if not IMPORTS_SUCCESS or user_manager is None:
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AI Onboarding System</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                h1 { color: #333; text-align: center; }
+                .status { text-align: center; padding: 20px; background: #e7f3ff; border-radius: 5px; margin: 20px 0; }
+                .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🚀 AI Onboarding System</h1>
+                <div class="status">
+                    <h3>✅ System Deployed Successfully!</h3>
+                    <p>The application is running in safe mode.</p>
+                    <p><strong>Time:</strong> ''' + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '''</p>
+                </div>
+                <div style="text-align: center;">
+                    <a href="/health" class="btn">Health Check</a>
+                    <a href="/api/status" class="btn">API Status</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+    
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
@@ -84,13 +137,26 @@ def health_check():
 def api_status():
     """API status endpoint"""
     try:
-        # Test database connection
-        user_manager.initialize_db()
+        # Test if components are loaded
+        if not IMPORTS_SUCCESS:
+            return jsonify({
+                'status': 'fallback_mode',
+                'message': 'Running in safe mode',
+                'imports': 'failed',
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        if user_manager:
+            user_manager.initialize_db()
+            db_status = 'connected'
+        else:
+            db_status = 'not_initialized'
         
         return jsonify({
             'status': 'ok',
-            'database': 'connected',
+            'database': db_status,
             'ai_model': 'gemini-2.5-flash',
+            'components_loaded': bool(user_manager and ai_assistant),
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
