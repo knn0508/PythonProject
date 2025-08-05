@@ -1,7 +1,5 @@
 from simple_app import app
 
-# This is the entry point for Vercel
-app = app
-
+# For local development
 if __name__ == "__main__":
     app.run()
