@@ -9,10 +9,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/index.py"
+      "dest": "/"
     }
-  ],
-  "env": {
-    "FLASK_DEBUG": "False"
-  }
+  ]
 }
