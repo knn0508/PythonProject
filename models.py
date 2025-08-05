@@ -170,73 +170,87 @@ Təsvir: {result.get('description', 'Təsvir yoxdur')}
 
 
 class UserManager:
-    """User management remains the same"""
+    """User management with improved error handling"""
 
     def __init__(self):
-        self.init_db()
-        self.add_demo_users()
+        try:
+            self.init_db()
+            self.add_demo_users()
+        except Exception as e:
+            print(f"UserManager init error: {e}")
+            raise e
 
     def init_db(self):
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-                       CREATE TABLE IF NOT EXISTS users
-                       (
-                           id
-                           INTEGER
-                           PRIMARY
-                           KEY
-                           AUTOINCREMENT,
-                           username
-                           TEXT
-                           UNIQUE
-                           NOT
-                           NULL,
-                           password_hash
-                           TEXT
-                           NOT
-                           NULL,
-                           name
-                           TEXT
-                           NOT
-                           NULL,
-                           role
-                           TEXT
-                           NOT
-                           NULL,
-                           created_at
-                           TIMESTAMP
-                           DEFAULT
-                           CURRENT_TIMESTAMP
-                       )
-                       ''')
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect('users.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                           CREATE TABLE IF NOT EXISTS users
+                           (
+                               id
+                               INTEGER
+                               PRIMARY
+                               KEY
+                               AUTOINCREMENT,
+                               username
+                               TEXT
+                               UNIQUE
+                               NOT
+                               NULL,
+                               password_hash
+                               TEXT
+                               NOT
+                               NULL,
+                               name
+                               TEXT
+                               NOT
+                               NULL,
+                               role
+                               TEXT
+                               NOT
+                               NULL,
+                               created_at
+                               TIMESTAMP
+                               DEFAULT
+                               CURRENT_TIMESTAMP
+                           )
+                           ''')
+            conn.commit()
+            conn.close()
+            print("✅ Database created successfully")
+        except Exception as e:
+            print(f"❌ Database creation failed: {e}")
+            raise e
 
     def initialize_db(self):
         """Alias for init_db for compatibility"""
         return self.init_db()
 
     def add_demo_users(self):
-        demo_users = [
-            ('admin', 'admin123', 'Sistem Administratoru', 'admin'),
-            ('nazir', 'nazir123', 'Əli Məmmədov', 'minister'),
-            ('analitik', 'data123', 'Leyla Həsənova', 'analyst')
-        ]
+        try:
+            demo_users = [
+                ('admin', 'admin123', 'Sistem Administratoru', 'admin'),
+                ('nazir', 'nazir123', 'Əli Məmmədov', 'minister'),
+                ('analitik', 'data123', 'Leyla Həsənova', 'analyst')
+            ]
 
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
+            conn = sqlite3.connect('users.db')
+            cursor = conn.cursor()
 
-        for username, password, name, role in demo_users:
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            cursor.execute('''
-                           INSERT
-                           OR IGNORE INTO users (username, password_hash, name, role)
-                VALUES (?, ?, ?, ?)
-                           ''', (username, password_hash, name, role))
+            for username, password, name, role in demo_users:
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                cursor.execute('''
+                               INSERT
+                               OR IGNORE INTO users (username, password_hash, name, role)
+                    VALUES (?, ?, ?, ?)
+                               ''', (username, password_hash, name, role))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
+            print("✅ Demo users added successfully")
+        except Exception as e:
+            print(f"❌ Adding demo users failed: {e}")
+            raise e
 
     def authenticate(self, username, password):
         password_hash = hashlib.sha256(password.encode()).hexdigest()

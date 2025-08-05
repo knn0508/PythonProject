@@ -171,6 +171,58 @@ def index():
     '''
 
 
+@app.route('/test-components')
+def test_components():
+    """Test each component individually to find the issue"""
+    test_results = {}
+    
+    # Test UserManager
+    try:
+        print("Testing UserManager...")
+        from models import UserManager
+        test_user_manager = UserManager()
+        test_results['UserManager'] = {'status': 'success', 'error': None}
+    except Exception as e:
+        test_results['UserManager'] = {'status': 'failed', 'error': str(e)}
+    
+    # Test FileManager
+    try:
+        print("Testing FileManager...")
+        from file_manager import FileManager
+        test_file_manager = FileManager()
+        test_results['FileManager'] = {'status': 'success', 'error': None}
+    except Exception as e:
+        test_results['FileManager'] = {'status': 'failed', 'error': str(e)}
+    
+    # Test KnowledgeBase
+    try:
+        print("Testing KnowledgeBase...")
+        from file_manager import FileManager
+        from models import EnhancedKnowledgeBase
+        test_file_manager = FileManager()
+        test_knowledge_base = EnhancedKnowledgeBase(test_file_manager)
+        test_results['KnowledgeBase'] = {'status': 'success', 'error': None}
+    except Exception as e:
+        test_results['KnowledgeBase'] = {'status': 'failed', 'error': str(e)}
+    
+    # Test AI Assistant
+    try:
+        print("Testing AI Assistant...")
+        from file_manager import FileManager
+        from models import EnhancedKnowledgeBase, EnhancedAIAssistant
+        test_file_manager = FileManager()
+        test_knowledge_base = EnhancedKnowledgeBase(test_file_manager)
+        test_ai_assistant = EnhancedAIAssistant(test_knowledge_base, Config.GEMINI_API_KEY)
+        test_results['AI Assistant'] = {'status': 'success', 'error': None}
+    except Exception as e:
+        test_results['AI Assistant'] = {'status': 'failed', 'error': str(e)}
+    
+    return jsonify({
+        'test_results': test_results,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
 @app.route('/debug')
 def debug_info():
     """Debug endpoint to see initialization status"""
