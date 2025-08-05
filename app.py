@@ -17,16 +17,27 @@ app.config.from_object(Config)
 def init_app():
     """Initialize application for serverless environment"""
     # Create necessary directories
-    os.makedirs('temp', exist_ok=True)
-    if not os.path.exists('/tmp'):
+    try:
+        os.makedirs('/tmp/temp', exist_ok=True)
+        os.makedirs('/tmp/documents', exist_ok=True)
+    except:
+        os.makedirs('temp', exist_ok=True)
         os.makedirs('documents', exist_ok=True)
     
     # Initialize components
     global file_manager, knowledge_base, user_manager, ai_assistant
-    file_manager = FileManager()
-    knowledge_base = EnhancedKnowledgeBase(file_manager)
-    user_manager = UserManager()
-    ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
+    try:
+        file_manager = FileManager()
+        knowledge_base = EnhancedKnowledgeBase(file_manager)
+        user_manager = UserManager()
+        ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Initialization error: {e}")
+        # Create minimal instances for basic functionality
+        file_manager = None
+        knowledge_base = None
+        user_manager = None
+        ai_assistant = None
 
 # Initialize for serverless
 init_app()

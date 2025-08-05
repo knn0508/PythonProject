@@ -1,8 +1,11 @@
 from app import app
 
-# This is the WSGI entry point for Vercel
-def handler(request, context):
-    return app(request, context)
+# This is the entry point for Vercel
+def handler(event, context):
+    return app
+
+# Export the app for Vercel
+application = app
 
 # For local development
 if __name__ == "__main__":
