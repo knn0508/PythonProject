@@ -37,21 +37,51 @@ def init_app():
         os.makedirs('temp', exist_ok=True)
         os.makedirs('documents', exist_ok=True)
     
-    # Initialize components only if imports succeeded
+    # Initialize components with better error handling
     global file_manager, knowledge_base, user_manager, ai_assistant
+    
     if IMPORTS_SUCCESS:
         try:
-            file_manager = FileManager()
-            knowledge_base = EnhancedKnowledgeBase(file_manager)
+            # Initialize UserManager first
+            print("Initializing UserManager...")
             user_manager = UserManager()
+            user_manager.initialize_db()  # Force database creation
+            print("✅ UserManager initialized")
+            
+            # Initialize FileManager
+            print("Initializing FileManager...")
+            file_manager = FileManager()
+            print("✅ FileManager initialized")
+            
+            # Initialize KnowledgeBase
+            print("Initializing KnowledgeBase...")
+            knowledge_base = EnhancedKnowledgeBase(file_manager)
+            print("✅ KnowledgeBase initialized")
+            
+            # Initialize AI Assistant
+            print("Initializing AI Assistant...")
             ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
-            print("✅ All components initialized successfully")
+            print("✅ AI Assistant initialized")
+            
+            print("🎉 All components initialized successfully!")
+            
         except Exception as e:
-            print(f"Component initialization error: {e}")
-            # Create minimal instances for basic functionality
+            print(f"❌ Component initialization error: {e}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            
+            # Try to initialize at least the basic user manager
+            try:
+                user_manager = UserManager()
+                user_manager.initialize_db()
+                print("✅ Basic UserManager fallback initialized")
+            except:
+                user_manager = None
+                print("❌ Even basic UserManager failed")
+            
             file_manager = None
             knowledge_base = None
-            user_manager = None
             ai_assistant = None
     else:
         file_manager = None
@@ -86,41 +116,53 @@ def admin_required(f):
 
 @app.route('/')
 def index():
-    # Fallback mode if components not loaded
-    if not IMPORTS_SUCCESS or user_manager is None:
-        return '''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>AI Onboarding System</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-                .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                h1 { color: #333; text-align: center; }
-                .status { text-align: center; padding: 20px; background: #e7f3ff; border-radius: 5px; margin: 20px 0; }
-                .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🚀 AI Onboarding System</h1>
-                <div class="status">
-                    <h3>✅ System Deployed Successfully!</h3>
-                    <p>The application is running in safe mode.</p>
-                    <p><strong>Time:</strong> ''' + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '''</p>
-                </div>
-                <div style="text-align: center;">
-                    <a href="/health" class="btn">Health Check</a>
-                    <a href="/api/status" class="btn">API Status</a>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
+    # Check if components are loaded
+    try:
+        if IMPORTS_SUCCESS and user_manager is not None:
+            # Full app mode - redirect to proper flow
+            if 'user_id' in session:
+                return redirect(url_for('dashboard'))
+            return redirect(url_for('login'))
+    except:
+        pass
     
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
+    # Fallback mode if components not loaded
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AI Onboarding System</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #333; text-align: center; }
+            .status { text-align: center; padding: 20px; background: #e7f3ff; border-radius: 5px; margin: 20px 0; }
+            .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+            .error { background: #ffe6e6; color: #cc0000; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 AI Onboarding System</h1>
+            <div class="status">
+                <h3>⚠️ System Loading...</h3>
+                <p>The application components are initializing.</p>
+                <p><strong>Time:</strong> ''' + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '''</p>
+            </div>
+            <div class="error">
+                <p><strong>Debug Info:</strong></p>
+                <p>IMPORTS_SUCCESS: ''' + str(IMPORTS_SUCCESS) + '''</p>
+                <p>user_manager: ''' + str(user_manager is not None) + '''</p>
+            </div>
+            <div style="text-align: center;">
+                <a href="/health" class="btn">Health Check</a>
+                <a href="/api/status" class="btn">API Status</a>
+                <a href="/login" class="btn">Try Login</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
 
 
 @app.route('/health')
@@ -140,23 +182,36 @@ def api_status():
         # Test if components are loaded
         if not IMPORTS_SUCCESS:
             return jsonify({
-                'status': 'fallback_mode',
-                'message': 'Running in safe mode',
-                'imports': 'failed',
+                'status': 'import_failed',
+                'message': 'Import errors occurred',
+                'imports_success': False,
+                'user_manager': False,
                 'timestamp': datetime.now().isoformat()
             })
         
+        # Check each component
+        component_status = {
+            'user_manager': user_manager is not None,
+            'file_manager': file_manager is not None,
+            'knowledge_base': knowledge_base is not None,
+            'ai_assistant': ai_assistant is not None
+        }
+        
         if user_manager:
-            user_manager.initialize_db()
-            db_status = 'connected'
+            try:
+                user_manager.initialize_db()
+                db_status = 'connected'
+            except Exception as e:
+                db_status = f'error: {str(e)}'
         else:
             db_status = 'not_initialized'
         
         return jsonify({
-            'status': 'ok',
+            'status': 'ok' if all(component_status.values()) else 'partial',
             'database': db_status,
-            'ai_model': 'gemini-2.5-flash',
-            'components_loaded': bool(user_manager and ai_assistant),
+            'components': component_status,
+            'imports_success': IMPORTS_SUCCESS,
+            'ai_model': 'gemini-2.5-flash' if ai_assistant else 'not_loaded',
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -169,20 +224,57 @@ def api_status():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        data = request.json
-        username = data.get('username')
-        password = data.get('password')
-
-        user = user_manager.authenticate(username, password)
-        if user:
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['name'] = user['name']
-            session['role'] = user['role']
-            return jsonify({'success': True, 'user': user})
+    # Check if user_manager is available
+    if user_manager is None:
+        if request.method == 'POST':
+            return jsonify({
+                'success': False, 
+                'message': 'Sistem hələ başlamır. Zəhmət olmasa bir az gözləyin.'
+            })
         else:
-            return jsonify({'success': False, 'message': 'Yanlış istifadəçi adı və ya şifrə!'})
+            return '''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Sistem Yüklənir</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; text-align: center; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+                    .loading { color: #007bff; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🔄 Sistem Yüklənir</h1>
+                    <p class="loading">AI Onboarding sistemi hazırlanır. Zəhmət olmasa bir neçə saniyə gözləyin...</p>
+                    <p><a href="/">Ana səhifəyə qayıt</a></p>
+                    <script>
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 5000);
+                    </script>
+                </div>
+            </body>
+            </html>
+            '''
+    
+    if request.method == 'POST':
+        try:
+            data = request.json
+            username = data.get('username')
+            password = data.get('password')
+
+            user = user_manager.authenticate(username, password)
+            if user:
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['name'] = user['name']
+                session['role'] = user['role']
+                return jsonify({'success': True, 'user': user})
+            else:
+                return jsonify({'success': False, 'message': 'Yanlış istifadəçi adı və ya şifrə!'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Xəta: {str(e)}'})
 
     return render_template('login.html')
 
