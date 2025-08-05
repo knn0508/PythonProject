@@ -14,11 +14,22 @@ import sqlite3
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Initialize components
-file_manager = FileManager()
-knowledge_base = EnhancedKnowledgeBase(file_manager)
-user_manager = UserManager()
-ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
+def init_app():
+    """Initialize application for serverless environment"""
+    # Create necessary directories
+    os.makedirs('temp', exist_ok=True)
+    if not os.path.exists('/tmp'):
+        os.makedirs('documents', exist_ok=True)
+    
+    # Initialize components
+    global file_manager, knowledge_base, user_manager, ai_assistant
+    file_manager = FileManager()
+    knowledge_base = EnhancedKnowledgeBase(file_manager)
+    user_manager = UserManager()
+    ai_assistant = EnhancedAIAssistant(knowledge_base, Config.GEMINI_API_KEY)
+
+# Initialize for serverless
+init_app()
 
 
 def login_required(f):
@@ -46,6 +57,37 @@ def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Vercel"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '1.0.0'
+    })
+
+
+@app.route('/api/status')
+def api_status():
+    """API status endpoint"""
+    try:
+        # Test database connection
+        user_manager.initialize_db()
+        
+        return jsonify({
+            'status': 'ok',
+            'database': 'connected',
+            'ai_model': 'gemini-2.5-flash',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -569,12 +611,8 @@ def files_manager():
     }
     return render_template('files.html', user=user_info)
 
+# For local development only
 if __name__ == '__main__':
-    # Create necessary directories
-    os.makedirs(Config.TEMPLATES_DIR, exist_ok=True)
-    os.makedirs('temp', exist_ok=True)
-    os.makedirs('documents', exist_ok=True)
-
     print("🚀 Enhanced AI Onboarding System Starting...")
     print("📧 Demo Accounts:")
     print("   Admin: admin / admin123")

@@ -9,14 +9,14 @@ class Config:
     # Gemini API configuration
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or "AIzaSyAk5UaULKxoV3CahPftPIwQA2Io4Ph3nno"
 
-    # Database configuration
+    # Database configuration - Use environment variable for production
     DATABASE_PATH = os.environ.get('DATABASE_PATH') or 'users.db'
 
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
 
-    # Debug mode
-    DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    # Debug mode - Disable for production
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
     # Server configuration
     HOST = os.environ.get('FLASK_HOST', '0.0.0.0')
